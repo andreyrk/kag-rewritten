@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset='utf-8' />
+	<meta name='viewport' content='width=device-width, user-scalable=no' />
+	<link id='-gd-engine-icon' rel='icon' type='image/png' href='favicon.png' />
+
+	<style type='text/css'>
+		body {
+			overflow: hidden;
+			margin: 0;
+			border: 0;
+			padding: 0;
+			text-align: center;
+			background-color: #4d4d4d;
+		}
+
+		#canvas {
+			display: block;
+			margin: 0;
+			image-rendering: pixelated;
+    		image-rendering: crisp-edges;
+			color: white;
+		}
+
+		#boot-splash {
+			image-rendering: pixelated;
+    		image-rendering: crisp-edges;
+			width: 8rem;
+			height: 8rem;
+		}
+
+		#status {
+			left: 0;
+			top: 0;
+			right: 0;
+			bottom: 0;
+			display: flex;
+			position: absolute;
+			justify-content: center;
+			align-items: center;
+		}
+	</style>
+	
+	
+</head>
+<body>
+	<canvas id='canvas'>
+		This browser appears to not support this game.<br/>
+		Please try updating or use a different browser.
+	</canvas>
+	
+	<div id='status'>
+		<img id="boot-splash" src="index.png"/>
+	</div>
+
+	<script type='text/javascript' src='index.js'></script>
+	<script type='text/javascript'>
+		var engine = new Engine();
+
+		(function() {
+			const EXECUTABLE_NAME = 'index';
+			const MAIN_PACK = 'index.pck';
+
+			var initializing = true;
+			var canvas = document.getElementById("canvas");
+			var status = document.getElementById("status");
+			
+			var animationCallbacks = [];
+			function animate(time) {
+				animationCallbacks.forEach(callback => callback(time));
+				requestAnimationFrame(animate);
+			}
+			requestAnimationFrame(animate);
+
+			function adjustCanvasDimensions() {
+				var scale = window.devicePixelRatio || 1;
+				var width = window.innerWidth;
+				var height = window.innerHeight;
+				canvas.width = width * scale;
+				canvas.height = height * scale;
+				canvas.style.width = width + "px";
+				canvas.style.height = height + "px";
+			}
+			animationCallbacks.push(adjustCanvasDimensions);
+			adjustCanvasDimensions();
+
+			var statusMode = null;
+			setStatusMode = function setStatusMode(mode) {
+				if (statusMode === mode || !initializing) {
+					return;
+				}
+
+				switch (mode) {
+					case 'loading':
+						break;
+					default:
+						throw new Error('Invalid status mode.');
+				}
+
+				statusMode = mode;
+			}
+
+			engine.setProgressFunc((current, total) => {
+				setStatusMode('loading')
+			});
+
+			function displayFailureNotice(err) {
+				initializing = false;
+
+				var msg = err.message || err;
+				console.error(msg);
+			};
+
+			if (Engine.isWebGLAvailable())
+			{
+				engine.setCanvas(canvas);
+				engine.startGame(EXECUTABLE_NAME, MAIN_PACK).then(() => {
+					status.remove();
+					initializing = false;
+				}, displayFailureNotice);
+			} else {
+				displayFailureNotice('WebGL not available');
+			}
+		})();
+	</script>
+</body>
+</html>
+
