@@ -22,6 +22,7 @@ namespace Mirror
     {
         // this is zero
         public int channel = Channels.DefaultReliable;
+        public bool ignoreAuthority = false;
     }
 
     /// <summary>
@@ -32,6 +33,7 @@ namespace Mirror
     {
         // this is zero
         public int channel = Channels.DefaultReliable;
+        public bool excludeOwner = false;
     }
 
     /// <summary>
@@ -39,16 +41,6 @@ namespace Mirror
     /// </summary>
     [AttributeUsage(AttributeTargets.Method)]
     public class TargetRpcAttribute : Attribute
-    {
-        // this is zero
-        public int channel = Channels.DefaultReliable;
-    }
-
-    /// <summary>
-    /// SyncEvents are networked events like ClientRpc's, but instead of calling a function on the game object, they trigger Events instead.
-    /// </summary>
-    [AttributeUsage(AttributeTargets.Event)]
-    public class SyncEventAttribute : Attribute
     {
         // this is zero
         public int channel = Channels.DefaultReliable;

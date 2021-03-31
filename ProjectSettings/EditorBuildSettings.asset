@@ -9,15 +9,17 @@ EditorBuildSettings:
     path: Assets/Engine/Source/Root.unity
     guid: e5a2b26ff89a32c4aafb91b505a62ee6
   - enabled: 1
-    path: Assets/Engine/Source/Menu/Menu.unity
-    guid: 6dd4fde58de5a1f4ba8fac7ea509e25e
-  - enabled: 1
     path: Assets/Engine/Source/Menu/Authentication/Authentication.unity
     guid: 81b63fd70703aac4c9bed47c86ae09dc
   - enabled: 1
     path: Assets/Engine/Source/Menu/Matchmaking/Matchmaking.unity
     guid: df695b0e1f9700c4ba11558e474d4b41
   - enabled: 1
-    path: Assets/Engine/Source/Runtime/Match.unity
-    guid: 24e126bf0fc908541b3ff96e320199fa
-  m_configObjects: {}
+    path: Assets/Engine/Source/Menu/Menu.unity
+    guid: 6dd4fde58de5a1f4ba8fac7ea509e25e
+  - enabled: 1
+    path: Assets/Core/Match.unity
+    guid: a12191c9b4cc91a45a15ef655dddcc7b
+  m_configObjects:
+    com.unity.addressableassets: {fileID: 11400000, guid: 83310e7dfe04e934eab2740982f143be,
+      type: 2}

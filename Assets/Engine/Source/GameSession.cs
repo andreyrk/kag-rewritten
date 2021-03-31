@@ -1,31 +1,27 @@
 ﻿using System;
 using System.Collections.Generic;
-using UnityEngine;
+using PlayFab;
+using PlayFab.ClientModels;
 using Mirror;
-using Nakama;
-using Nakama.TinyJson;
+using UnityEngine;
 
 namespace KAG
 {
-    public class PlayerInfo : MessageBase
+    public static class GameScene
+    {
+        public const string Authentication = "Authentication";
+        public const string Matchmaking = "Matchmaking";
+        public const string Match = "Match";
+        public const string Menu = "Menu";
+    }
+
+    public struct PlayerInfo : NetworkMessage
     {
         public string Username;
         public string UserId;
-
-        public PlayerInfo()
-        {
-            Username = "Peasant";
-            UserId = "[invalid]";
-        }
-
-        public PlayerInfo(ISession session)
-        {
-            Username = session.Username;
-            UserId = session.UserId;
-        }
     }
 
-    public class ServerInfo
+    public struct ServerInfo
     {
         public string Name;
         public string IP;
@@ -33,157 +29,169 @@ namespace KAG
 
     public class GameSession
     {
-        public PlayerInfo player = new PlayerInfo();
+        public enum SessionType {
+            Solo,
+            Client,
+            Server
+        }
+
+        public SessionType type;
+
+        public static GameSession Instance
+        {
+            get
+            {
+                if (_instance == null)
+                {
+                    _instance = new GameSession();
+                }
+
+                return _instance;
+            }
+        }
+        private static GameSession _instance;
+
+        public PlayerInfo player = new PlayerInfo()
+        {
+            Username = "Peasant"
+        };
 
         #region Session events
-        public delegate void OnLoginSuccess(PlayerInfo pinfo);
-        public delegate void OnLoginFailure(Exception e);
+        public delegate void OnLoginSuccess(PlayerInfo player);
+        public delegate void OnLoginFailure(string error);
         public delegate void OnLogout();
 
         public delegate void OnMatchmakeRefresh(List<ServerInfo> serverList);
         #endregion
 
-        #region API endpoint
-        string api_scheme;
-        string api_host;
-        int api_port;
-        string api_key;
-        #endregion
-
-        #region Nakama specifics
-        IClient nakama;
-        ISession session;
-        #endregion
-
-        public bool IsConnected { get => session != null; }
-
-        public GameSession(string api_scheme, string api_host, int api_port, string api_key)
+        public void LoginGuest(OnLoginSuccess onSuccess, OnLoginFailure onFailure)
         {
-            this.api_scheme = api_scheme;
-            this.api_host = api_host;
-            this.api_port = api_port;
-            this.api_key = api_key;
-        }
-
-        #region Authentication helpers
-        private void Authenticate(ISession p_session)
-        {
-            if (p_session == null) return;
-
-            session = p_session;
-            player = new PlayerInfo(session);
-        }
-
-        public async void Login(string email, string password, OnLoginSuccess onSuccess = null, OnLoginFailure onFailure = null)
-        {
-            nakama = new Client(api_scheme, api_host, api_port, api_key, UnityWebRequestAdapter.Instance);
-
-            try
-            {
-                email = email.Replace("\u200B", "");
-                password = password.Replace("\u200B", "");
-
-                if (string.IsNullOrWhiteSpace(email))
-                    email = "invalid";
-                if (string.IsNullOrWhiteSpace(password))
-                    password = "invalid";
-
-                Authenticate(await nakama.AuthenticateEmailAsync(email, password, null, false));
-                onSuccess?.Invoke(player);
-            }
-            catch (ApiResponseException e)
-            {
-                onFailure?.Invoke(e);
-            }
-        }
-
-        public async void Register(string username, string email, string password, OnLoginSuccess onSuccess = null, OnLoginFailure onFailure = null)
-        {
-            nakama = new Client(api_scheme, api_host, api_port, api_key, UnityWebRequestAdapter.Instance);
-
-            try
-            {
-                username = username.Replace("\u200B", "");
-                email = email.Replace("\u200B", "");
-                password = password.Replace("\u200B", "");
-
-                if (string.IsNullOrWhiteSpace(username))
-                    username = "invalid";
-                if (string.IsNullOrWhiteSpace(email))
-                    email = "invalid";
-                if (string.IsNullOrWhiteSpace(password))
-                    password = "invalid";
-
-                Authenticate(await nakama.AuthenticateEmailAsync(email, password, username, true));
-                onSuccess?.Invoke(player);
-            }
-            catch (ApiResponseException e)
-            {
-                onFailure?.Invoke(e);
-            }
-        }
-
-        public async void LoginAsGuest(OnLoginSuccess onSuccess = null, OnLoginFailure onFailure = null)
-        {
-            nakama = new Client(api_scheme, api_host, api_port, api_key, UnityWebRequestAdapter.Instance);
-
-            string deviceId = PlayerPrefs.GetString("Nakama.DeviceId");
-            if (string.IsNullOrWhiteSpace(deviceId))
-            {
-                deviceId = "";
-                for (var i = 0; i < 10; i++)
-                {
-                    deviceId += ((char)('A' + UnityEngine.Random.Range(0, 26))).ToString();
+#if UNITY_ANDROID
+            var request = new LoginWithAndroidDeviceIDRequest {
+                CreateAccount = true,
+                InfoRequestParameters = new GetPlayerCombinedInfoRequestParams {
+                    GetUserAccountInfo = true
                 }
-                PlayerPrefs.SetString("Nakama.DeviceId", deviceId);
-            }
+            };
 
-            try
+            PlayFabClientAPI.LoginWithAndroidDeviceID(request,
+            result =>
             {
-                Authenticate(await nakama.AuthenticateDeviceAsync(deviceId));
-                onSuccess?.Invoke(player);
-            }
-            catch (ApiResponseException e)
+                player.Username = "Guest-" + result.PlayFabId;
+                player.UserId = result.PlayFabId;
+                onSuccess.Invoke(player);
+            },
+            error =>
             {
-                onFailure?.Invoke(e);
-            }
-        }
+                onFailure.Invoke(error.GenerateErrorReport());
+            });
+#elif UNITY_IOS
+            var request = new LoginWithIOSDeviceIDRequest {
+                CreateAccount = true,
+                InfoRequestParameters = new GetPlayerCombinedInfoRequestParams {
+                    GetUserAccountInfo = true
+                }
+            };
 
-        public void LoginOffline(OnLoginSuccess onSuccess = null)
-        {
-            onSuccess?.Invoke(player);
-        }
-
-        public void Logout(OnLogout callback)
-        {
-            player = null;
-            session = null;
-            nakama = null;
-
-            callback?.Invoke();
-        }
-        #endregion
-
-        #region Matchmaking helpers
-        public async void MatchmakeRefresh(OnMatchmakeRefresh onResult = null)
-        {
-            var result = await nakama.RpcAsync(session, "get_server_list");
-            var list = result.Payload.FromJson<List<ServerInfo>>();
-
-            if (list == null)
+            PlayFabClientAPI.LoginWithIOSDeviceID(request,
+            result =>
             {
-                onResult?.Invoke(new List<ServerInfo>());
-            }
-            else
+                player.Username = "Guest-" + result.PlayFabId;
+                player.UserId = result.PlayFabId;
+                onSuccess.Invoke(player);
+            },
+            error =>
             {
-                onResult?.Invoke(list);
+                onFailure.Invoke(error.GenerateErrorReport());
+            });
+#else
+            string guestID = PlayerPrefs.GetString("GuestID");
+            if (string.IsNullOrWhiteSpace(guestID))
+            {
+                guestID = "";
+                for (var i = 0; i < 16; i++)
+                {
+                    guestID += ((char)('A' + UnityEngine.Random.Range(0, 26))).ToString();
+                }
+                PlayerPrefs.SetString("GuestID", guestID);
             }
+
+            var request = new LoginWithCustomIDRequest
+            {
+                CreateAccount = true,
+                CustomId = guestID,
+                InfoRequestParameters = new GetPlayerCombinedInfoRequestParams
+                {
+                    GetUserAccountInfo = true
+                }
+            };
+
+            PlayFabClientAPI.LoginWithCustomID(request,
+            result =>
+            {
+                player.Username = "Guest_" + result.PlayFabId;
+                player.UserId = result.PlayFabId;
+                onSuccess.Invoke(player);
+            },
+            error =>
+            {
+                onFailure.Invoke(error.GenerateErrorReport());
+            });
+#endif
         }
 
-        public async void MatchmakeCreate(ServerInfo serverInfo)
+        public void Login(string username, string password, OnLoginSuccess onSuccess, OnLoginFailure onFailure)
         {
-            await nakama.RpcAsync(session, "create_server", serverInfo.ToJson());
+            var request = new LoginWithPlayFabRequest
+            {
+                Username = username,
+                Password = password,
+                InfoRequestParameters = new GetPlayerCombinedInfoRequestParams {
+                    GetUserAccountInfo = true
+                }
+        };
+
+            PlayFabClientAPI.LoginWithPlayFab(request, 
+            result =>
+            {
+                player.Username = result.InfoResultPayload.AccountInfo.Username;
+                player.UserId = result.PlayFabId;
+                onSuccess.Invoke(player);
+            }, 
+            error =>
+            {
+                onFailure.Invoke(error.GenerateErrorReport());
+            });
         }
-        #endregion
+
+        public void Register(string username, string email, string password, OnLoginSuccess onSuccess, OnLoginFailure onFailure)
+        {
+            var request = new RegisterPlayFabUserRequest
+            {
+                Username = username,
+                Email = email,
+                Password = password,
+                InfoRequestParameters = new GetPlayerCombinedInfoRequestParams
+                {
+                    GetUserAccountInfo = true
+                }
+            };
+
+            PlayFabClientAPI.RegisterPlayFabUser(request,
+            result =>
+            {
+                player.Username = result.Username;
+                player.UserId = result.PlayFabId;
+                onSuccess.Invoke(player);
+            },
+            error =>
+            {
+                onFailure.Invoke(error.GenerateErrorReport());
+            });
+        }
+
+        public void Logout(OnLogout action) {
+            action.Invoke();
+        }
     }
 }

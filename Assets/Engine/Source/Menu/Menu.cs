@@ -1,26 +1,23 @@
 ﻿using UnityEngine;
+using UnityEngine.SceneManagement;
 
 namespace KAG.Menu
 {
     public class Menu : MonoBehaviour
     {
-        private GameManager manager;
-        private GameSession session;
-
         private void Start()
         {
-            manager = GameManager.Instance;
-            session = GameManager.Instance.session;
+
         }
 
         public void ShowSingleplayer()
         {
-            manager.StartHost();
+            SceneManager.LoadScene(GameScene.Match);
         }
 
         public void ShowMultiplayer()
         {
-            manager.LoadScene(GameScene.Matchmaking);
+            SceneManager.LoadScene(GameScene.Matchmaking);
         }
 
         public void Settings()
@@ -30,9 +27,9 @@ namespace KAG.Menu
 
         public void Logout()
         {
-            session.Logout(() =>
+            GameSession.Instance.Logout(() =>
             {
-                manager.LoadScene(GameScene.Authentication);
+                SceneManager.LoadScene(GameScene.Authentication);
             });
         }
     }

@@ -1,19 +1,18 @@
-﻿using System;
-using UnityEngine;
+﻿using UnityEngine;
 using TMPro;
 
 namespace KAG.Menu
 {
     public class ServerEntry : MonoBehaviour
     {
-        private GameManager gameManager;
+        public Toast toast;
 
         public TextMeshProUGUI label;
         public ServerInfo serverInfo;
 
         private void Awake()
         {
-            gameManager = GameManager.Instance;
+
         }
 
         private void Start()
@@ -23,10 +22,10 @@ namespace KAG.Menu
 
         public void Join()
         {
-            gameManager.networkAddress = serverInfo.IP;
-            gameManager.StartClient();
+            //gameManager.networkAddress = serverInfo.IP;
+            //gameManager.StartClient();
 
-            gameManager.ShowMessage("Trying to connect to " + serverInfo.IP + "...");
+            toast.Show("Trying to connect to " + serverInfo.IP + "...");
         }
     }
 }

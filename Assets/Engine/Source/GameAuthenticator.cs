@@ -33,7 +33,7 @@ public class GameAuthenticator : NetworkAuthenticator
 
     public override void OnClientAuthenticate(NetworkConnection conn)
     {
-        NetworkClient.Send(GameManager.Instance.session.player);
+        NetworkClient.Send(GameSession.Instance.player);
     }
 
     public void OnAuthenticationResponse(NetworkConnection conn, PlayerInfo msg)
